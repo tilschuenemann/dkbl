@@ -29,16 +29,23 @@ data without losing the original.
 1. The user specifies the original report and creates the ledger and the mapping table. The ledger is sorted ascending by date, the mapping table is sorted alphabetically by recipient. All columns are formatted appropriately.
 
 [x] import content
+
 [x] import header
+
 [x] create ledger
+
 [x] create mapping table
+
 [ ] tests
 
 2. The user should be able to make changes to the ledger or mapping table and then update the ledger. Balances, mappings and mapping table get updated.
 
 [x] update balance
+
 [x] update mappings
+
 [x] update mappings table
+
 [ ] update tests
 
 3. New exports get appended to the original ledger.
