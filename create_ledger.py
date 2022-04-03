@@ -24,7 +24,7 @@ def import_dkb_header(path: str) -> dict:
 
 
 def import_dkb_content(path: str) -> pd.DataFrame:
-    """Reads the CSV from path, filters down to date, recipient an amount,
+    """Reads the CSV from path, selects date, recipient and amount columns,
     formats them as date, float and string respectively.
     """
 
@@ -42,7 +42,7 @@ def import_dkb_content(path: str) -> pd.DataFrame:
 
 
 def add_initial_record(df: pd.DataFrame(), amount_end: float, date) -> pd.DataFrame:
-    """Add initial record with original amount for setting up the balance correctly.
+    """Adds initial record with original amount for setting up the balance correctly.
     Returns dataframe sorted by asc. date.
     """
 
@@ -58,7 +58,7 @@ def add_initial_record(df: pd.DataFrame(), amount_end: float, date) -> pd.DataFr
 
 
 def format_content(df: pd.DataFrame()) -> pd.DataFrame:
-    """Takes basic dataframe and adds extra columns. Returns result as dataframe."""
+    """Takes basic dataframe and adds extra columns."""
 
     # TODO cast date_custom as date
     df["date_custom"] = None
@@ -80,18 +80,14 @@ def format_content(df: pd.DataFrame()) -> pd.DataFrame:
     return df
 
 
-def main():
-    my_file = "files/export_2019_2022.csv"
-    df = import_dkb_content(my_file)
-    header = import_dkb_header(my_file)
+def create_ledger(fp_export):
+    df = import_dkb_content(fp_export)
+    header = import_dkb_header(fp_export)
 
     df = add_initial_record(df, header["amount_end"], header["start"])
     df = format_content(df)
+    # TODO replace with update_balance(df)
     df["balance"] = df["amount"].cumsum()
 
-    df.to_csv("files/simpleledger.csv", sep=";", index=False, encoding="UTF-8")
+    df.to_csv("files/ledger.csv", sep=";", index=False, encoding="UTF-8")
     print("printed to disk")
-
-
-if __name__ == "__main__":
-    main()
