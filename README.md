@@ -55,3 +55,4 @@ data without losing the original.
 ## Non-functional Requirements
 
 1. The program should provide a log entry for each operation and their changes (amount of records added or deleted).
+
