@@ -297,7 +297,7 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
         updated_maptab = fresh_recipients
 
     updated_maptab = updated_maptab.sort_values(by="recipient")
-    updated_maptab["occurence"] = updated_maptab["occurence"].fillna(0)
+
     updated_maptab = updated_maptab.astype(
         {
             "recipient": str,
@@ -305,9 +305,10 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
             "label1": str,
             "label2": str,
             "label3": str,
-            "occurence": int,
+            "occurence": str,
         }
     )
+    updated_maptab = updated_maptab.replace("nan", "")
     updated_maptab.to_csv(maptab_path, sep=";", encoding="UTF-8", index=False)
     return updated_maptab
 
@@ -326,9 +327,6 @@ def update_balance(output_folder: str) -> pd.DataFrame:
     pd.DataFrame
         ledger from output folder with updated balance
     """
-
-    # TODO init has to be the earliest entry
-    # TODO troubleshooting if it isnt?
 
     ledger_path = f"{output_folder}/ledger.csv"
 
