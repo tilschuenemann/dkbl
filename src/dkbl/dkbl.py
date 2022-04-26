@@ -72,25 +72,6 @@ def _import_dkb_content(path: str) -> pd.DataFrame:
     return df
 
 
-def _add_initial_record(df: pd.DataFrame, amount_end: float, date: str) -> pd.DataFrame:
-    """Adds initial record with original amount for setting up the balance correctly.
-    Returns dataframe sorted by asc. date.
-    """
-
-    if "amount" not in df.columns:
-        exit("supplied malformed df - amount column not found!")
-
-    amount = amount_end - df["amount"].sum(axis=0)
-    date = date + timedelta(days=-1)
-    ini_row = {"amount": amount, "recipient": "~~INIT", "date": date}
-
-    ini_df = pd.DataFrame([ini_row])
-    df = pd.concat([df, ini_df], axis=0, ignore_index=True)
-
-    df = df.sort_values(by="date")
-    return df
-
-
 def _format_content(df: pd.DataFrame) -> pd.DataFrame:
     """Takes basic dataframe and adds extra columns.
 
@@ -208,13 +189,15 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
     df = _import_dkb_content(export)
     header = _import_dkb_header(export)
 
-    df = _add_initial_record(df, header["amount_end"], header["start"])
     df = _format_content(df)
 
     _write_ledger_to_disk(df, output_folder)
 
     update_maptab(output_folder)
-    update_balance(output_folder)
+
+    initial_balance = header["amount_end"] - df["amount"].sum(axis=0)
+    update_history(output_folder, initial_balance, False, False)
+
     return df
 
 
@@ -236,10 +219,8 @@ def append_ledger(export: str, output_folder: str):
     cutoff_date = ledger["date"].max()
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
-    nu_df = _import_dkb_content(export)
-    nu_header = _import_dkb_header(export)
+    df = _import_dkb_content(export)
 
-    df = _add_initial_record(nu_df, nu_header["amount_end"], nu_header["start"])
     df = _format_content(df)
     df = df.loc[df["date"] >= cutoff_date]
 
@@ -314,39 +295,60 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
     return updated_maptab
 
 
-def update_balance(output_folder: str) -> pd.DataFrame:
-    """Reads ledger in output folder, checks for init entry,
-    sorts by date and creates the running sum.
-
+def update_history(
+    output_folder: str,
+    initial_balance: float,
+    use_custom_date: bool,
+    use_custom_amount: bool,
+) -> pd.DataFrame:
+    """
     Parameters
     -------
-    output_folder: str
-        path to folder where ledger files reside in
+    output_folder : str
+        adf
+    initial_balance : float
+        initial account balance
+    use_custom_date: bool
+
+    use_custom_amount: bool
+
 
     Returns
     -------
     pd.DataFrame
-        ledger from output folder with updated balance
-    """
 
+    """
     ledger_path = f"{output_folder}/ledger.csv"
 
     df = pd.read_csv(ledger_path, sep=";", encoding="UTF-8", decimal=",")
 
-    try:
-        i = df["date"].idxmin()
-    except ValueError:
-        exit("date column is empty")
+    date_col = "date_custom" if use_custom_date else "date"
+    amount_col = "amount" if use_custom_amount else "amount"
 
-    if df["recipient"][i] != "~~INIT":
-        exit("init entry not earliest date - new balance won't be created")
+    if use_custom_amount or use_custom_date:
+        # TODO coalesce values
+        None
 
-    df = df.sort_values(by="date")
-    df["balance"] = df["amount"].cumsum()
+    history = df[[date_col, amount_col]].copy()
 
-    _write_ledger_to_disk(df, output_folder)
+    history = history.sort_values(by=date_col)
 
-    return df
+    # check this first
+    history[amount_col].iloc[0] = history[amount_col].iloc[0] + initial_balance
+
+    history["balance"] = history[amount_col].cumsum()
+
+    history.to_csv(
+        f"{output_folder}/history.csv",
+        sep=";",
+        index=False,
+        encoding="UTF-8",
+        date_format="%Y-%m-%d",
+        float_format="%.2f",
+        decimal=",",
+    )
+
+    return history
 
 
 def update_ledger_mappings(output_folder: str):
