@@ -2,6 +2,7 @@ import pandas as pd
 
 import datetime
 from datetime import datetime
+from datetime import timedelta
 import locale
 import os
 import re
@@ -200,7 +201,7 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
         ledger dataframe
 
     """
-    if file.exists(f"{output_folder}/ledger.csv"):
+    if os.path.exists(f"{output_folder}/ledger.csv"):
         if _user_input("Do you want to overwrite the existing ledger.csv?") == False:
             exit("not overwriting ledger. aborting.")
 
