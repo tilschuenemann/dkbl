@@ -1,11 +1,8 @@
 import pandas as pd
 
-import datetime
 from datetime import datetime
-from datetime import timedelta
 import locale
 import os
-import re
 
 
 def _import_dkb_header(path: str) -> dict:
@@ -89,7 +86,7 @@ def _format_content(df: pd.DataFrame) -> pd.DataFrame:
 
     """
 
-    if set(["date", "recipient", "amount"]).issubset(df.columns) == False:
+    if set(["date", "recipient", "amount"]).issubset(df.columns) is False:
         exit("supplied malformed df - date, recipient or amount columns dont exist!")
 
     df["date_custom"] = str()
@@ -212,7 +209,7 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
     return df
 
 
-def append_ledger(export: str, output_folder: str):
+def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
     """
 
     Parameters
@@ -221,6 +218,11 @@ def append_ledger(export: str, output_folder: str):
 
     output_folder: str
         where should result be stored?
+
+    Returns
+    -------
+    pd.DataFrame
+        new ledger with appendage
     """
 
     ledger = pd.read_csv(
@@ -231,7 +233,6 @@ def append_ledger(export: str, output_folder: str):
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
     df = _import_dkb_content(export)
-
     df = _format_content(df)
     df = df.loc[df["date"] >= cutoff_date]
 
@@ -244,11 +245,12 @@ def append_ledger(export: str, output_folder: str):
 
 def update_maptab(output_folder: str) -> pd.DataFrame:
     """Gets fresh list of ledger recipients, adds delta to current maptab
-    if it exists
+    if it exists.
 
     Parameters
     -------
     output_folder: str
+
 
     Returns
     -------
@@ -262,7 +264,6 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
     ledger = pd.read_csv(f"{output_folder}/ledger.csv", sep=";")
 
     fresh_recipients = pd.DataFrame(ledger.recipient.unique(), columns=["recipient"])
-
     fresh_recipients["recipient_clean"] = str()
     fresh_recipients["label1"] = str()
     fresh_recipients["label2"] = str()
@@ -363,7 +364,19 @@ def update_history(
     return history
 
 
-def update_ledger_mappings(output_folder: str):
+def update_ledger_mappings(output_folder: str) -> pd.DataFrame:
+    """
+
+    Parameters
+    -------
+    output_folder: str
+
+
+    Returns
+    -------
+    pd.DataFrame
+        ledger with updated mappings
+    """
 
     ledger_path = f"{output_folder}/ledger.csv"
     mp_path = f"{output_folder}/maptab.csv"
@@ -380,3 +393,5 @@ def update_ledger_mappings(output_folder: str):
     ledger = ledger.merge(mp, how="left", on="recipient")
 
     _write_ledger_to_disk(ledger, output_folder)
+
+    return ledger
