@@ -21,7 +21,7 @@ def _import_dkb_header(path: str) -> dict:
     Returns
     -------
     dict
-        dict containing report start and end date and end amount
+        dict containing report start, end date, end amount
     """
 
     if os.path.exists(path):
@@ -75,7 +75,7 @@ def _import_dkb_content(path: str) -> pd.DataFrame:
 def _format_content(df: pd.DataFrame) -> pd.DataFrame:
     """Takes basic dataframe and adds extra columns.
 
-    Df needs to have columns "amount" and "date"
+    Df needs to have columns "amount", "date", "recipient".
 
     Parameters
     -------
@@ -154,6 +154,17 @@ def _write_ledger_to_disk(ledger: pd.DataFrame, output_folder: str):
 
 
 def _user_input(phrase: str) -> bool:
+    """Helper function to get boolean user input.
+
+    Parameter
+    -------
+    phrase: str
+        question that asks for input
+    Returns
+    -------
+    bool
+        user choice
+    """
     user_input = input(f"{phrase} [y/n] \n")
     if user_input == ("y"):
         return True
@@ -301,22 +312,23 @@ def update_history(
     use_custom_date: bool,
     use_custom_amount: bool,
 ) -> pd.DataFrame:
-    """
+    """Creates a simple history dataframe from implicit ledger in output folder.
+
     Parameters
     -------
     output_folder : str
-        adf
+        folder where ledger.csv resides in
     initial_balance : float
         initial account balance
     use_custom_date: bool
-
+        should date_custom be considered?
     use_custom_amount: bool
-
+        should amount_custom be considered?
 
     Returns
     -------
     pd.DataFrame
-
+        history df with columns date, balance
     """
     ledger_path = f"{output_folder}/ledger.csv"
 
