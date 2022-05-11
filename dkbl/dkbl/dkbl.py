@@ -2,7 +2,34 @@ import pandas as pd
 
 from datetime import datetime
 import locale
+import math
 import os
+
+
+def _verify_output_folder(output_folder: str, what: str) -> bool:
+    """Helper function to check for file structure in output_folder.
+
+    Parameters
+    -------
+    output_folder:str
+        path to output_folder
+    what:str
+        either "ledger" or "maptab"
+    Returns
+    -------
+    bool
+        whether output_folder structure is valid
+    """
+
+    if os.path.exists(output_folder) is False:
+        return False
+    elif what == "ledger" and os.path.exists(f"{output_folder}/ledger.csv") is False:
+        return False
+    elif what == "maptab" and os.path.exists(f"{output_folder}/maptab.csv") is False:
+        return False
+    elif what == "export" and os.path.exists(f"{output_folder}/maptab.csv") is False:
+        return False
+    return True
 
 
 def _import_dkb_header(path: str) -> dict:
@@ -66,34 +93,13 @@ def _import_dkb_content(path: str) -> pd.DataFrame:
     df["amount"] = df["amount"].apply(lambda a: locale.atof(a))
     df["recipient"] = df["recipient"].astype(str)
 
-    return df
-
-
-def _format_content(df: pd.DataFrame) -> pd.DataFrame:
-    """Takes basic dataframe and adds extra columns.
-
-    Df needs to have columns "amount", "date", "recipient".
-
-    Parameters
-    -------
-    df: pd.DataFrame
-        input dataframe
-
-    Returns
-    -------
-    pd.DataFrame
-        formatted df
-
-    """
-
-    if set(["date", "recipient", "amount"]).issubset(df.columns) is False:
-        exit("supplied malformed df - date, recipient or amount columns dont exist!")
-
     df["date_custom"] = str()
     df["amount_custom"] = float()
     df["balance"] = float()
-    df["type"] = df["amount"].apply(lambda a: "Income" if a > 0 else "Expense")
-    df["occurence_custom"] = int()
+    df["type"] = (
+        df["amount"].apply(lambda a: "Income" if a > 0 else "Expense").astype(str)
+    )
+    df["occurence_custom"] = int(1)
     df["recipient_clean"] = str()
     df["recipient_clean_custom"] = str()
     df["label1_custom"] = str()
@@ -102,27 +108,6 @@ def _format_content(df: pd.DataFrame) -> pd.DataFrame:
     df["label1"] = str()
     df["label2"] = str()
     df["label3"] = str()
-
-    df = df.astype(
-        {
-            "amount": float,
-            "recipient": str,
-            "date": str,
-            "date_custom": str,
-            "amount_custom": float,
-            "balance": float,
-            "type": str,
-            "occurence_custom": int,
-            "recipient_clean": str,
-            "recipient_clean_custom": str,
-            "label1_custom": str,
-            "label2_custom": str,
-            "label3_custom": str,
-            "label1": str,
-            "label2": str,
-            "label3": str,
-        }
-    )
 
     df = df[sorted(df.columns)]
     df = df.sort_values(by="date")
@@ -191,14 +176,20 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
 
     """
     if os.path.exists(f"{output_folder}/ledger.csv"):
-        if _user_input("Do you want to overwrite the existing ledger.csv?") == False:
+        if _user_input("Do you want to overwrite the existing ledger.csv?") is False:
             exit("not overwriting ledger. aborting.")
+
+    if os.path.exists(export) is False:
+        exit("supplied export doesn't exist. aborting.")
+
+    if os.path.exists(output_folder) is False:
+        output_folder = os.getcwd()
+        print(
+            f"output_folder doesnt exist. writing to working directory: {output_folder}"
+        )
 
     df = _import_dkb_content(export)
     header = _import_dkb_header(export)
-
-    df = _format_content(df)
-
     _write_ledger_to_disk(df, output_folder)
 
     update_maptab(output_folder)
@@ -217,7 +208,7 @@ def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
     export: str
 
     output_folder: str
-        where should result be stored?
+        path to output folder
 
     Returns
     -------
@@ -233,61 +224,49 @@ def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
     df = _import_dkb_content(export)
-    df = _format_content(df)
     df = df.loc[df["date"] >= cutoff_date]
 
     appended_ledger = pd.concat([ledger, df], axis=0, ignore_index=True)
 
+    appended_ledger["date"] = pd.to_datetime(appended_ledger["date"], format="%Y-%m-%d")
     _write_ledger_to_disk(appended_ledger, output_folder)
 
     return appended_ledger
 
 
 def update_maptab(output_folder: str) -> pd.DataFrame:
-    """Gets fresh list of ledger recipients, adds delta to current maptab
-    if it exists.
+    """Reads all unique recipients from ledger and adds new ones to the mapping
+    table.
 
     Parameters
     -------
     output_folder: str
-
+        path to output folder
 
     Returns
     -------
     pd.DataFrame
         updated mapping table
-
-
     """
 
     maptab_path = f"{output_folder}/maptab.csv"
     ledger = pd.read_csv(f"{output_folder}/ledger.csv", sep=";")
 
     fresh_recipients = pd.DataFrame(ledger.recipient.unique(), columns=["recipient"])
-    fresh_recipients["recipient_clean"] = str()
-    fresh_recipients["label1"] = str()
-    fresh_recipients["label2"] = str()
-    fresh_recipients["label3"] = str()
-    fresh_recipients["occurence"] = int()
 
     if os.path.exists(maptab_path):
-        stale_recipients = pd.read_csv(maptab_path, sep=";")
+        stale_maptab = pd.read_csv(maptab_path, sep=";")
 
         updated_maptab = fresh_recipients.merge(
-            stale_recipients, on="recipient", how="left", suffixes=["_new", None]
+            stale_maptab, on="recipient", how="left", suffixes=["_new", None]
         )
-        updated_maptab.drop(
-            [
-                "label1_new",
-                "label2_new",
-                "label3_new",
-                "recipient_clean_new",
-                "occurence_new",
-            ],
-            axis=1,
-            inplace=True,
-        )
+
     else:
+        fresh_recipients["recipient_clean"] = str()
+        fresh_recipients["label1"] = str()
+        fresh_recipients["label2"] = str()
+        fresh_recipients["label3"] = str()
+        fresh_recipients["occurence"] = int()
         updated_maptab = fresh_recipients
 
     updated_maptab = updated_maptab.sort_values(by="recipient")
@@ -331,6 +310,10 @@ def update_history(
     pd.DataFrame
         history df with columns date, balance
     """
+
+    if math.isnan(initial_balance):
+        exit("supplied initial balance is nan.")
+
     ledger_path = f"{output_folder}/ledger.csv"
 
     df = pd.read_csv(ledger_path, sep=";", encoding="UTF-8", decimal=",")
@@ -370,7 +353,7 @@ def update_ledger_mappings(output_folder: str) -> pd.DataFrame:
     Parameters
     -------
     output_folder: str
-
+        path to output folder
 
     Returns
     -------
