@@ -1,35 +1,9 @@
-import pandas as pd
+import pandas as pd  # ignore
 
 from datetime import datetime
 import locale
 import math
 import os
-
-
-def _verify_output_folder(output_folder: str, what: str) -> bool:
-    """Helper function to check for file structure in output_folder.
-
-    Parameters
-    -------
-    output_folder:str
-        path to output_folder
-    what:str
-        either "ledger" or "maptab"
-    Returns
-    -------
-    bool
-        whether output_folder structure is valid
-    """
-
-    if os.path.exists(output_folder) is False:
-        return False
-    elif what == "ledger" and os.path.exists(f"{output_folder}/ledger.csv") is False:
-        return False
-    elif what == "maptab" and os.path.exists(f"{output_folder}/maptab.csv") is False:
-        return False
-    elif what == "export" and os.path.exists(f"{output_folder}/maptab.csv") is False:
-        return False
-    return True
 
 
 def _import_dkb_header(path: str) -> dict:
@@ -185,7 +159,8 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
     if os.path.exists(output_folder) is False:
         output_folder = os.getcwd()
         print(
-            f"output_folder doesnt exist. writing to working directory: {output_folder}"
+            "output_folder doesnt exist. writing to working directory: "
+            + f"{output_folder}"
         )
 
     df = _import_dkb_content(export)
@@ -294,6 +269,9 @@ def update_history(
 ) -> pd.DataFrame:
     """Creates a simple history dataframe from implicit ledger in output folder.
 
+    If supplied initial_balance is nan, it's attempted to read the existing
+    history and grab the initial balance from there.
+
     Parameters
     -------
     output_folder : str
@@ -308,16 +286,21 @@ def update_history(
     Returns
     -------
     pd.DataFrame
-        history df with columns date, balance
+        history df with columns date, amount, balance, initial_balance
     """
-
-    if math.isnan(initial_balance):
+    if math.isnan(initial_balance) and os.path.exists(f"{output_folder}/history.csv"):
+        old_history = pd.read_csv(
+            f"{output_folder}/history.csv", sep=";", encoding="UTF-8"
+        )
+        initial_balance = old_history["initial_balance"][0]
+    elif math.isnan(initial_balance):
         exit("supplied initial balance is nan.")
 
     ledger_path = f"{output_folder}/ledger.csv"
 
     df = pd.read_csv(ledger_path, sep=";", encoding="UTF-8", decimal=",")
 
+    # TODO opinionated: always coerce?
     date_col = "date_custom" if use_custom_date else "date"
     amount_col = "amount" if use_custom_amount else "amount"
 
@@ -326,13 +309,11 @@ def update_history(
         None
 
     history = df[[date_col, amount_col]].copy()
-
     history = history.sort_values(by=date_col)
-
-    # check this first
-    history[amount_col].iloc[0] = history[amount_col].iloc[0] + initial_balance
-
-    history["balance"] = history[amount_col].cumsum()
+    history["initial_balance"] = 0
+    history.at[0, "initial_balance"] = initial_balance
+    history["balance"] = history[amount_col] + history["initial_balance"]
+    history["balance"] = history["balance"].cumsum()
 
     history.to_csv(
         f"{output_folder}/history.csv",
