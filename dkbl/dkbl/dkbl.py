@@ -289,7 +289,7 @@ def update_history(
     pd.DataFrame
         history df with columns date, amount, balance, initial_balance
     """
-    if math.isnan(initial_balance) and os.path.exists(f"{output_folder}/history.csv"):
+    if initial_balance == float() and os.path.exists(f"{output_folder}/history.csv"):
         old_history = pd.read_csv(
             f"{output_folder}/history.csv", sep=";", encoding="UTF-8"
         )
@@ -301,28 +301,34 @@ def update_history(
 
     df = pd.read_csv(ledger_path, sep=";", encoding="UTF-8", decimal=",")
 
+    date_col = "date_custom" if use_custom_date else "date"
+    amount_col = "amount_custom" if use_custom_amount else "amount"
+
     history = df[["date", "amount"]].copy()
     if use_custom_amount and use_custom_date:
-        history["amount"] = np.where(
+        history["amount_custom"] = np.where(
             df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
         )
-        history["date"] = np.where(
+        history["date_custom"] = np.where(
             df["date_custom"].isnull(), df["date"], df["date_custom"]
         )
+        history.drop(["amount", "date"], axis=1, inplace=True)
     elif use_custom_amount:
-        history["amount"] = np.where(
+        history["amount_custom"] = np.where(
             df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
         )
+        history.drop("amount", axis=1, inplace=True)
     elif use_custom_date:
-        history["date"] = np.where(
+        history["date_custom"] = np.where(
             df["date_custom"].isnull(), df["date"], df["date_custom"]
         )
+        history.drop("date", axis=1, inplace=True)
 
-    history = history.sort_values(by="date")
+    history = history.sort_values(by=date_col)
     history = history.reset_index(drop=True)
     history["initial_balance"] = 0
     history.at[0, "initial_balance"] = initial_balance
-    history["balance"] = history["amount"] + history["initial_balance"]
+    history["balance"] = history[amount_col] + history["initial_balance"]
     history["balance"] = history["balance"].cumsum()
 
     history.to_csv(
