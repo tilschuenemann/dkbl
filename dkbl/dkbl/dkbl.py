@@ -1,4 +1,5 @@
 import pandas as pd  # ignore
+import numpy as np
 
 from datetime import datetime
 import locale
@@ -300,19 +301,28 @@ def update_history(
 
     df = pd.read_csv(ledger_path, sep=";", encoding="UTF-8", decimal=",")
 
-    # TODO opinionated: always coerce?
-    date_col = "date_custom" if use_custom_date else "date"
-    amount_col = "amount" if use_custom_amount else "amount"
+    history = df[["date", "amount"]].copy()
+    if use_custom_amount and use_custom_date:
+        history["amount"] = np.where(
+            df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
+        )
+        history["date"] = np.where(
+            df["date_custom"].isnull(), df["date"], df["date_custom"]
+        )
+    elif use_custom_amount:
+        history["amount"] = np.where(
+            df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
+        )
+    elif use_custom_date:
+        history["date"] = np.where(
+            df["date_custom"].isnull(), df["date"], df["date_custom"]
+        )
 
-    if use_custom_amount or use_custom_date:
-        # TODO coalesce values
-        None
-
-    history = df[[date_col, amount_col]].copy()
-    history = history.sort_values(by=date_col)
+    history = history.sort_values(by="date")
+    history = history.reset_index(drop=True)
     history["initial_balance"] = 0
     history.at[0, "initial_balance"] = initial_balance
-    history["balance"] = history[amount_col] + history["initial_balance"]
+    history["balance"] = history["amount"] + history["initial_balance"]
     history["balance"] = history["balance"].cumsum()
 
     history.to_csv(
