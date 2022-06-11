@@ -88,12 +88,11 @@ def _import_dkb_content(export_path: str) -> pd.DataFrame:
     df["recipient"] = df["recipient"].astype(str)
 
     df["date_custom"] = str()
-    df["amount_custom"] = float()
-    df["balance"] = float()
+    df["amount_custom"] = str()
     df["type"] = (
         df["amount"].apply(lambda a: "Income" if a > 0 else "Expense").astype(str)
     )
-    df["occurence_custom"] = int(1)
+    df["occurence_custom"] = str()
     df["recipient_clean"] = str()
     df["recipient_clean_custom"] = str()
     df["label1_custom"] = str()
@@ -247,6 +246,7 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
     if os.path.exists(maptab_path):
         stale_maptab = _read_export(output_folder, "maptab")
 
+        # TODO this will lose old entries incase of new ledger and old maptab
         updated_maptab = fresh_recipients.merge(
             stale_maptab, on="recipient", how="left", suffixes=["_new", None]
         )
@@ -260,18 +260,7 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
         updated_maptab = fresh_recipients
 
     updated_maptab = updated_maptab.sort_values(by="recipient")
-
-    updated_maptab = updated_maptab.astype(
-        {
-            "recipient": str,
-            "recipient_clean": str,
-            "label1": str,
-            "label2": str,
-            "label3": str,
-            "occurence": str,
-        }
-    )
-    updated_maptab = updated_maptab.replace("nan", "")
+    updated_maptab["recipient"] = updated_maptab["recipient"].replace("nan", "")
     updated_maptab.to_csv(maptab_path, sep=";", encoding="UTF-8", index=False)
     return updated_maptab
 
@@ -314,20 +303,15 @@ def update_history(
     amount_col = "amount_custom" if use_custom_amount else "amount"
 
     history = df[["date", "amount"]].copy()
-    if use_custom_amount and use_custom_date:
+    if use_custom_amount:
+        # TODO float(0) will be coerced
         history["amount_custom"] = np.where(
-            df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
-        )
-        history["date_custom"] = np.where(
-            df["date_custom"].isnull(), df["date"], df["date_custom"]
-        )
-        history.drop(["amount", "date"], axis=1, inplace=True)
-    elif use_custom_amount:
-        history["amount_custom"] = np.where(
-            df["amount_custom"].isnull(), df["amount"], df["amount_custom"]
+            df["amount_custom"].isnull(),
+            df["amount"],
+            df["amount_custom"],
         )
         history.drop("amount", axis=1, inplace=True)
-    elif use_custom_date:
+    if use_custom_date:
         history["date_custom"] = np.where(
             df["date_custom"].isnull(), df["date"], df["date_custom"]
         )
