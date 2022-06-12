@@ -5,9 +5,10 @@ from datetime import datetime
 import locale
 import math
 import os
+import pathlib
 
 
-def _read_export(path: str, type: str) -> pd.DataFrame:
+def _handle_import(path: pathlib.Path, type: str) -> pd.DataFrame:
 
     # TODO path normalizing incase of path to dir / output path
 
@@ -17,13 +18,13 @@ def _read_export(path: str, type: str) -> pd.DataFrame:
         elif type == "content":
             df = pd.read_csv(path, encoding="iso-8859-1", skiprows=5, sep=";")
         elif type == "maptab":
-            df = pd.read_csv(f"{path}/maptab.csv", sep=";", encoding="UTF-8")
+            df = pd.read_csv(path / "maptab.csv", sep=";", encoding="UTF-8")
         elif type == "ledger":
             df = pd.read_csv(
-                f"{path}/ledger.csv", sep=";", encoding="UTF-8", decimal=","
+                path / "ledger.csv", sep=";", encoding="UTF-8", decimal=","
             )
         elif type == "history":
-            df = pd.read_csv(f"{path}/history.csv", sep=";", encoding="UTF-8")
+            df = pd.read_csv(path / "history.csv", sep=";", encoding="UTF-8")
 
     except FileNotFoundError:
         exit("export file not found!")
@@ -34,7 +35,7 @@ def _read_export(path: str, type: str) -> pd.DataFrame:
     return df
 
 
-def _import_dkb_header(export_path: str) -> dict:
+def _import_dkb_header(export_path: pathlib.Path) -> dict:
     """Reads CSV from path and extracts header data: start and end date as well
     as the amount at the end of the report.
 
@@ -49,7 +50,7 @@ def _import_dkb_header(export_path: str) -> dict:
         dict containing report start, end date, end amount
     """
 
-    df = _read_export(export_path, "header")
+    df = _handle_import(export_path, "header")
 
     locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
@@ -62,7 +63,7 @@ def _import_dkb_header(export_path: str) -> dict:
     return header
 
 
-def _import_dkb_content(export_path: str) -> pd.DataFrame:
+def _import_dkb_content(export_path: pathlib.Path) -> pd.DataFrame:
     """Reads the CSV from path, selects date, recipient and amount columns,
     formats them as date, float and string respectively.
 
@@ -76,7 +77,7 @@ def _import_dkb_content(export_path: str) -> pd.DataFrame:
     pd.DataFrame
         df containing date, recipient and amount columns
     """
-    df = _read_export(export_path, "content")
+    df = _handle_import(export_path, "content")
 
     locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
@@ -107,7 +108,9 @@ def _import_dkb_content(export_path: str) -> pd.DataFrame:
     return df
 
 
-def _write_ledger_to_disk(ledger: pd.DataFrame, output_folder: str, fname: str):
+def _write_ledger_to_disk(
+    ledger: pd.DataFrame, output_folder: pathlib.Path, fname: str
+):
     """Helper function for standardized writing to disk.
 
     Parameters
@@ -118,19 +121,21 @@ def _write_ledger_to_disk(ledger: pd.DataFrame, output_folder: str, fname: str):
         path to output folder
     """
 
-    if os.path.exists(output_folder) is False:
+    if pathlib.Path(output_folder).exists() is False:
         output_folder = os.getcwd()
         print(
             "output_folder doesnt exist. writing to working directory: "
             + f"{output_folder}"
         )
 
-    if os.path.exists(f"{output_folder}/ledger.csv"):
+    name = output_folder / f"{fname}.csv"
+
+    if name.exists():
         if _user_input(f"Do you want to overwrite the existing {fname}.csv?") is False:
-            exit("not overwriting ledger. aborting.")
+            exit(f"not overwriting {fname}. aborting.")
 
     ledger.to_csv(
-        f"{output_folder}/{fname}.csv",
+        name,
         sep=";",
         index=False,
         encoding="UTF-8",
@@ -161,7 +166,7 @@ def _user_input(phrase: str) -> bool:
         return _user_input("Please enter y or n " + phrase)
 
 
-def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
+def create_ledger(export: pathlib.Path, output_folder: pathlib.Path) -> pd.DataFrame:
     """Reads the export and its header info, adds the initial record
     and formats the base ledger.
 
@@ -193,7 +198,7 @@ def create_ledger(export: str, output_folder: str) -> pd.DataFrame:
     return df
 
 
-def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
+def append_ledger(export: pathlib.Path, output_folder: pathlib.Path) -> pd.DataFrame:
     """
 
     Parameters
@@ -208,7 +213,7 @@ def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
     pd.DataFrame
         new ledger with appendage
     """
-    ledger = _read_export(output, "ledger")
+    ledger = _handle_import(output, "ledger")
     cutoff_date = ledger["date"].max()
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
@@ -223,7 +228,7 @@ def append_ledger(export: str, output_folder: str) -> pd.DataFrame:
     return appended_ledger
 
 
-def update_maptab(output_folder: str) -> pd.DataFrame:
+def update_maptab(output_folder: pathlib.Path) -> pd.DataFrame:
     """Reads all unique recipients from ledger and adds new ones to the mapping
     table.
 
@@ -238,13 +243,13 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
         updated mapping table
     """
 
-    maptab_path = f"{output_folder}/maptab.csv"
-    ledger = _read_export(output_folder, "ledger")
+    maptab_path = output_folder / "maptab.csv"
+    ledger = _handle_import(output_folder, "ledger")
 
     fresh_recipients = pd.DataFrame(ledger.recipient.unique(), columns=["recipient"])
 
     if os.path.exists(maptab_path):
-        stale_maptab = _read_export(output_folder, "maptab")
+        stale_maptab = _handle_import(output_folder, "maptab")
 
         # TODO this will lose old entries incase of new ledger and old maptab
         updated_maptab = fresh_recipients.merge(
@@ -266,7 +271,7 @@ def update_maptab(output_folder: str) -> pd.DataFrame:
 
 
 def update_history(
-    output_folder: str,
+    output_folder: pathlib.Path,
     initial_balance: float,
     use_custom_date: bool,
     use_custom_amount: bool,
@@ -294,10 +299,10 @@ def update_history(
     """
 
     if initial_balance == float():
-        old_history = _read_export(path, "history")
+        old_history = _handle_import(path, "history")
         initial_balance = old_history["initial_balance"][0]
 
-    df = _read_export(output_folder, "ledger")
+    df = _handle_import(output_folder, "ledger")
 
     date_col = "date_custom" if use_custom_date else "date"
     amount_col = "amount_custom" if use_custom_amount else "amount"
@@ -343,16 +348,14 @@ def update_ledger_mappings(output_folder: str) -> pd.DataFrame:
         ledger with updated mappings
     """
 
-    ledger = _read_export(output_folder, "ledger")
-    mp = _read_export(output_folder, "maptab")
+    ledger = _handle_import(output_folder, "ledger")
+    mp = _handle_import(output_folder, "maptab")
 
-    ledger.drop(
-        ["label1", "label2", "label3", "recipient_clean", "occurence"],
-        axis=1,
-        inplace=True,
-        errors="ignore",
-    )
-    ledger = ledger.merge(mp, how="left", on="recipient")
+    ledger = ledger[
+        ledger.columns.difference(
+            ["label1", "label2", "label3", "recipient_clean", "occurence"]
+        )
+    ].merge(mp, how="left", on="recipient")
 
     _write_ledger_to_disk(ledger, output_folder, "ledger")
 
