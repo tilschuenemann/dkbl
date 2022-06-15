@@ -35,12 +35,12 @@ def _handle_import(path: pathlib.Path, filetype: str) -> pd.DataFrame:
 
 
 def _import_dkb_header(export_path: pathlib.Path) -> dict:
-    """Reads CSV from path and extracts header data: start and end date as well
+    """Reads CSV from path and extracts header data: start date, end date as well
     as the amount at the end of the report.
 
     Parameters
     -----
-    export_path: str
+    export_path: pathlib.Path
         path to CSV export file
 
     Returns
@@ -68,7 +68,7 @@ def _import_dkb_content(export_path: pathlib.Path) -> pd.DataFrame:
 
     Parameters
     ------
-    export_path: str
+    export_path: pathlib.Path
         path to export
 
     Returns
@@ -116,8 +116,10 @@ def _write_ledger_to_disk(
     -------
     ledger: pd.DataFrame
         ledger df
-    output_folder: str
+    output_folder: pathlib.Path
         path to output folder
+    fname: str
+        name of file to write (.csv will get appended)
     """
 
     if pathlib.Path(output_folder).exists() is False:
@@ -173,9 +175,9 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path) -> pd.DataF
 
     Parameters
     -------
-    export: str
+    export: pathlib.Path
         path to export
-    output_folder: str
+    output_folder: pathlib.Path
         path to output folder
 
     Returns
@@ -202,9 +204,9 @@ def append_ledger(export: pathlib.Path, output_folder: pathlib.Path) -> pd.DataF
 
     Parameters
     -------
-    export: str
-
-    output_folder: str
+    export: pathlib.Path
+        path to export
+    output_folder: pathlib.Path
         path to output folder
 
     Returns
@@ -233,7 +235,7 @@ def update_maptab(output_folder: pathlib.Path) -> pd.DataFrame:
 
     Parameters
     -------
-    output_folder: str
+    output_folder: pathlib.Path
         path to output folder
 
     Returns
@@ -282,7 +284,7 @@ def update_history(
 
     Parameters
     -------
-    output_folder : str
+    output_folder : pathlib.Path
         folder where ledger.csv resides in
     initial_balance : float
         initial account balance
@@ -333,12 +335,12 @@ def update_history(
     return history
 
 
-def update_ledger_mappings(output_folder: str) -> pd.DataFrame:
+def update_ledger_mappings(output_folder: pathlib.Path) -> pd.DataFrame:
     """
 
     Parameters
     -------
-    output_folder: str
+    output_folder: pathlib.Path
         path to output folder
 
     Returns
