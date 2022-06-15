@@ -1,6 +1,7 @@
 import pandas as pd  # ignore
 import numpy as np
 
+import argparse
 from datetime import datetime
 import locale
 import math
@@ -420,3 +421,84 @@ def distribute_occurences(output_folder: pathlib.Path) -> pd.DataFrame:
     _write_ledger_to_disk(dis, output_folder, "dist_leder")
 
     return dis
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="dkbl")
+    subparsers = parser.add_subparsers(dest="action")
+
+    output_folder = argparse.ArgumentParser(add_help=False)
+    output_folder.add_argument(
+        "--output_folder", nargs=1, dest="output_folder", type=pathlib.Path
+    )
+
+    export = argparse.ArgumentParser(add_help=False)
+    export.add_argument("export", nargs=1, type=pathlib.Path)
+
+    # create subparsers
+    ulm = subparsers.add_parser(
+        "update-ledger-mappings",
+        help="update ledger mappings with fresh mapping table",
+        parents=[output_folder],
+    )
+
+    um = subparsers.add_parser(
+        "update-maptab",
+        help="update mapping table with fresh recipients",
+        parents=[output_folder],
+    )
+
+    al = subparsers.add_parser(
+        "append-ledger",
+        help="add new export to existing ledger",
+        parents=[export, output_folder],
+    )
+
+    cl = subparsers.add_parser(
+        "create-ledger",
+        help="create ledger from export",
+        parents=[export, output_folder],
+    )
+
+    uh = subparsers.add_parser(
+        "update-history",
+        help="update history from ledger",
+        parents=[export, output_folder],
+    )
+    uh.add_argument("--initial_balance", type=float, default=float())
+    uh.add_argument("--use_custom_date", action="store_true")
+    uh.add_argument("--use_custom_amount", action="store_true")
+
+    dl = subparsers.add_parser(
+        "distribute-ledger",
+        help="distribute occurences and copy ledger",
+        parents=[output_folder],
+    )
+
+    args = parser.parse_args()
+
+    if args.action in ["create-ledger", "append-ledger", "update-history"]:
+        export = args.export[0]
+
+    if args.output_folder is None:
+        output_folder = os.getcwd()
+    else:
+        output_folder = args.output_folder[0]
+
+    if args.action == "create-ledger":
+        create_ledger(export, output_folder)
+    elif args.action == "append-ledger":
+        append_ledger(export, output_folder)
+    elif args.action == "update-history":
+        update_history(
+            output_folder,
+            args.initial_balance,
+            args.use_custom_date,
+            args.use_custom_amount,
+        )
+    elif args.action == "update-ledger-mappings":
+        update_ledger_mappings(output_folder)
+    elif args.action == "update-maptab":
+        update_maptab(output_folder)
+    elif args.action == "distribute-ledger":
+        distribute_occurences(output_folder)
