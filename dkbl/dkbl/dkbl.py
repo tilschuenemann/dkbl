@@ -8,23 +8,22 @@ import os
 import pathlib
 
 
-def _handle_import(path: pathlib.Path, type: str) -> pd.DataFrame:
-
-    # TODO path normalizing incase of path to dir / output path
-
+def _handle_import(path: pathlib.Path, filetype: str) -> pd.DataFrame:
     try:
-        if type == "header":
+        if filetype == "header":
             df = pd.read_csv(path, encoding="iso-8859-1", nrows=4, sep=";", header=None)
-        elif type == "content":
+        elif filetype == "content":
             df = pd.read_csv(path, encoding="iso-8859-1", skiprows=5, sep=";")
-        elif type == "maptab":
+        elif filetype == "maptab":
             df = pd.read_csv(path / "maptab.csv", sep=";", encoding="UTF-8")
-        elif type == "ledger":
+        elif filetype == "ledger" or filetype == "dist_ledger":
             df = pd.read_csv(
-                path / "ledger.csv", sep=";", encoding="UTF-8", decimal=","
+                path / f"{filetype}.csv", sep=";", encoding="UTF-8", decimal=","
             )
-        elif type == "history":
-            df = pd.read_csv(path / "history.csv", sep=";", encoding="UTF-8")
+        elif filetype == "history":
+            df = pd.read_csv(
+                path / "history.csv", sep=";", encoding="UTF-8", decimal=","
+            )
 
     except FileNotFoundError:
         exit("export file not found!")
