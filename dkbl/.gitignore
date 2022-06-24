@@ -1,3 +1,5 @@
 .mypy_cache/*
 dev/*
 TODO.md
+dkbl/__pycache__/*
+viz/*
