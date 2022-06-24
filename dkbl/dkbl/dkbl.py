@@ -18,9 +18,9 @@ def _handle_import(path: pathlib.Path, filetype: str) -> pd.DataFrame:
         elif filetype == "maptab":
             df = pd.read_csv(path / "maptab.csv", sep=";", encoding="UTF-8")
         elif filetype == "ledger" or filetype == "dist_ledger":
-            df = pd.read_csv(
-                path / f"{filetype}.csv", sep=";", encoding="UTF-8", decimal=","
-            )
+            fn = f"{filetype}.csv"
+            
+            df = pd.read_csv(path / fn, sep=";", encoding="UTF-8", decimal=",")
         elif filetype == "history":
             df = pd.read_csv(
                 path / "history.csv", sep=";", encoding="UTF-8", decimal=","
@@ -215,7 +215,7 @@ def append_ledger(export: pathlib.Path, output_folder: pathlib.Path) -> pd.DataF
     pd.DataFrame
         new ledger with appendage
     """
-    ledger = _handle_import(output, "ledger")
+    ledger = _handle_import(output_folder, "ledger")
     cutoff_date = ledger["date"].max()
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
@@ -301,7 +301,7 @@ def update_history(
     """
 
     if initial_balance == float():
-        old_history = _handle_import(path, "history")
+        old_history = _handle_import(output_folder, "history")
         initial_balance = old_history["initial_balance"][0]
 
     df = _handle_import(output_folder, "ledger")
@@ -364,7 +364,7 @@ def update_ledger_mappings(output_folder: pathlib.Path) -> pd.DataFrame:
     return ledger
 
 
-def distribute_occurences(output_folder: pathlib.Path) -> pd.DataFrame:
+def _distribute_occurences(df: pd.DataFrame) -> pd.DataFrame:
     """Reads the ledger from the output_folder and creates timeseries
     for all line items that have an occurence that is not 1, 0 or -1.
     All their amounts get divided by the occurence and the dates get set to the
@@ -378,8 +378,6 @@ def distribute_occurences(output_folder: pathlib.Path) -> pd.DataFrame:
 
     """
 
-    df = _handle_import(output_folder, "ledger")
-
     if not (set(df).issuperset(["date", "amount", "occurence"])) or df.shape[0] == 0:
         exit("malformed input df")
 
@@ -387,8 +385,9 @@ def distribute_occurences(output_folder: pathlib.Path) -> pd.DataFrame:
 
     mask = df["occurence"].between(-1, 1, inclusive="both")
     no_rep = df[mask]
-    rep = df[~mask]
+    rep = df[~mask].reset_index(drop=True)
 
+    if len(rep.index)>0:
     # create new dates, which will get appended later
     new_dates = pd.DataFrame()
 
@@ -414,11 +413,10 @@ def distribute_occurences(output_folder: pathlib.Path) -> pd.DataFrame:
     rep = rep.reset_index(drop=True)
     rep["amount"] = rep["amount"] / abs(rep["occurence"])
     rep["date"] = new_dates["date"]
-
     dis = pd.concat([no_rep, rep], axis=0)
     dis["date"] = pd.to_datetime(dis["date"], format="%Y-%m-%d")
-
-    _write_ledger_to_disk(dis, output_folder, "dist_leder")
+    else:
+        return no_rep
 
     return dis
 
@@ -463,7 +461,7 @@ if __name__ == "__main__":
     uh = subparsers.add_parser(
         "update-history",
         help="update history from ledger",
-        parents=[export, output_folder],
+        parents=[output_folder],
     )
     uh.add_argument("--initial_balance", type=float, default=float())
     uh.add_argument("--use_custom_date", action="store_true")
@@ -477,7 +475,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.action in ["create-ledger", "append-ledger", "update-history"]:
+    if args.action in ["create-ledger", "append-ledger"]:
         export = args.export[0]
 
     if args.output_folder is None:
