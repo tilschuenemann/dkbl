@@ -4,7 +4,6 @@ import numpy as np
 import argparse
 from datetime import datetime
 import locale
-import math
 import os
 import pathlib
 
@@ -18,52 +17,63 @@ def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFra
     :returns: 
     """
     try:
-        if filetype=="header":
-            if bank =="dkb":
-                df = pd.read_csv(path, encoding="iso-8859-1", nrows=4, sep=";", header=None)
+        if filetype == "header":
+            if bank == "dkb":
+                df = pd.read_csv(
+                    path, encoding="iso-8859-1", nrows=4, sep=";", header=None
+                )
 
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
                 # TODO to df
-                header = {
+                df = {
                     "start": datetime.strptime(df.iloc[1, 1], "%d.%m.%Y"),
                     "end": datetime.strptime(df.iloc[2, 1], "%d.%m.%Y"),
                     "amount_end": locale.atof(df.iloc[3, 1].replace(" EUR", "")),
                 }
-            elif bank=="bbb":
+            elif bank == "bbb":
                 df = pd.read_csv(path, encoding="iso-8859-1", sep=";").tail(2)
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
                 # TODO to df
                 df = {
-                    "start": datetime.strptime(df.iloc[1,0], "%d.%m.%Y"),
-                    "end": datetime.strptime(df.iloc[0,0], "%d.%m.%Y"),
-                    "amount_end": locale.atof(df.iloc[1,12]),
+                    "start": datetime.strptime(df.iloc[1, 0], "%d.%m.%Y"),
+                    "end": datetime.strptime(df.iloc[0, 0], "%d.%m.%Y"),
+                    "amount_end": locale.atof(df.iloc[1, 12]),
                 }
-        elif filetype=="content":            
-            if bank =="dkb":
+        elif filetype == "content":
+            if bank == "dkb":
                 df = pd.read_csv(path, encoding="iso-8859-1", skiprows=5, sep=";")
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
                 df = df[["Buchungstag", "Auftraggeber / Begünstigter", "Betrag (EUR)"]]
                 df.columns = ["date", "recipient", "amount"]
                 df["amount"] = df["amount"].apply(lambda a: locale.atof(a))
-    
-            elif bank=="bbb":
-                df = pd.read_csv(path, encoding="iso-8859-1", skiprows=13, sep=";",skipfooter=3,engine="python")
+
+            elif bank == "bbb":
+                df = pd.read_csv(
+                    path,
+                    encoding="iso-8859-1",
+                    skiprows=13,
+                    sep=";",
+                    skipfooter=3,
+                    engine="python",
+                )
 
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
-                df["Soll/Haben"].replace({"S":-1,"H":1},inplace=True)
-                df["Umsatz"] = df["Umsatz"].apply(lambda x: locale.atof(x)) * df["Soll/Haben"]
+                df["Soll/Haben"].replace({"S": -1, "H": 1}, inplace=True)
+                df["Umsatz"] = (
+                    df["Umsatz"].apply(lambda x: locale.atof(x)) * df["Soll/Haben"]
+                )
 
-                df = df[["Buchungstag","Zahlungsempfänger","Umsatz"]]
+                df = df[["Buchungstag", "Zahlungsempfänger", "Umsatz"]]
                 df.columns = ["date", "recipient", "amount"]
 
         if filetype == "maptab":
             df = pd.read_csv(path / "maptab.csv", sep=";", encoding="UTF-8")
         elif filetype == "ledger" or filetype == "dist_ledger":
             fn = f"{filetype}.csv"
-            
+
             df = pd.read_csv(path / fn, sep=";", encoding="UTF-8", decimal=",")
         elif filetype == "history":
             df = pd.read_csv(
@@ -75,21 +85,22 @@ def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFra
 
     if df.empty():
         exit("import is empty")
-    elif df.shape()[0]==0:
+    elif df.shape()[0] == 0:
         exit("import has no rows")
-    elif df.shape()[1]==0:
+    elif df.shape()[1] == 0:
         exit("import has no columns")
-    
+
     return df
 
-def _format_base(export_path: pathlib.Path,bank: str) -> pd.DataFrame:
+
+def _format_base(export_path: pathlib.Path, bank: str) -> pd.DataFrame:
     """Imports CSV from path and adds ledger columns.
 
     :param export_path: path to export
     :param bank:
     :returns: df with ledger columns
     """
-    df = _handle_import(export_path, "content",bank)
+    df = _handle_import(export_path, "content", bank)
 
     df["date"] = pd.to_datetime(df["date"], format="%d.%m.%Y")
     df["recipient"] = df["recipient"].astype(str)
@@ -114,8 +125,7 @@ def _format_base(export_path: pathlib.Path,bank: str) -> pd.DataFrame:
     return df
 
 
-def _write_ledger_to_disk(
-    df: pd.DataFrame, output_folder: pathlib.Path, fname: str):
+def _write_ledger_to_disk(df: pd.DataFrame, output_folder: pathlib.Path, fname: str):
     """Helper function for standardized writing to disk.
 
     If output_folder doesn't exit it falls back to the current working directory.
@@ -165,7 +175,9 @@ def _user_input(phrase: str) -> bool:
         return _user_input("Please enter y or n " + phrase)
 
 
-def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -> pd.DataFrame:
+def create_ledger(
+    export: pathlib.Path, output_folder: pathlib.Path, bank: str
+) -> pd.DataFrame:
     """Reads the export and its header info, adds the initial record
     and formats the base ledger.
 
@@ -175,7 +187,7 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
     :param output_folder: path to output folder
     :returns: ledger dataframe
     """
-    df = _format_base(export,bank)
+    df = _format_base(export, bank)
     header = _handle_import(export, "header", bank)
 
     _write_ledger_to_disk(df, output_folder, "ledger.csv")
@@ -188,18 +200,20 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
     return df
 
 
-def append_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -> pd.DataFrame:
+def append_ledger(
+    export: pathlib.Path, output_folder: pathlib.Path, bank: str
+) -> pd.DataFrame:
     """
 
     :param export: path to export
     :param output_folder: path to output folder
     :param returns: new ledger with appendage
     """
-    ledger = _handle_import(output_folder, "ledger",bank)
+    ledger = _handle_import(output_folder, "ledger", bank)
     cutoff_date = ledger["date"].max()
     ledger = ledger.loc[ledger["date"] < cutoff_date]
 
-    df = _format_base(export,bank)
+    df = _format_base(export, bank)
     df = df.loc[df["date"] >= cutoff_date]
 
     appended_ledger = pd.concat([ledger, df], axis=0, ignore_index=True)
@@ -340,7 +354,7 @@ def _distribute_occurences(df: pd.DataFrame) -> pd.DataFrame:
     no_rep = df[mask]
     rep = df[~mask].reset_index(drop=True)
 
-    if len(rep.index)>0:
+    if len(rep.index) > 0:
         # create new dates, which will get appended later
         new_dates = pd.DataFrame()
 
@@ -387,7 +401,7 @@ if __name__ == "__main__":
     export.add_argument("export", nargs=1, type=pathlib.Path)
 
     bank = argparse.ArgumentParser(add_help=False)
-    bank.add_argument("bank", nargs=1, choices=["dkb","bbb"])
+    bank.add_argument("bank", nargs=1, choices=["dkb", "bbb"])
 
     # create subparsers
     ulm = subparsers.add_parser(
@@ -441,9 +455,9 @@ if __name__ == "__main__":
         output_folder = args.output_folder[0]
 
     if args.action == "create-ledger":
-        create_ledger(export, output_folder,bank)
+        create_ledger(export, output_folder, bank)
     elif args.action == "append-ledger":
-        append_ledger(export, output_folder,bank)
+        append_ledger(export, output_folder, bank)
     elif args.action == "update-history":
         update_history(
             output_folder,
