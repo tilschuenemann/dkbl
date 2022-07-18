@@ -197,7 +197,7 @@ def create_ledger(
 
     update_maptab(output_folder)
 
-    initial_balance = header["amount_end"] - df["amount"].sum(axis=0)
+    initial_balance = header["amount_end"].iloc[0] - df["amount"].sum(axis=0)
     update_history(output_folder, initial_balance, False, False)
 
     return df
