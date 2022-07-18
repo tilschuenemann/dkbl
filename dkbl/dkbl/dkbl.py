@@ -86,11 +86,11 @@ def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFra
     except FileNotFoundError:
         exit("export file not found!")
 
-    if df.empty():
+    if df.empty:
         exit("import is empty")
-    elif df.shape()[0] == 0:
+    elif df.shape[0] == 0:
         exit("import has no rows")
-    elif df.shape()[1] == 0:
+    elif df.shape[1] == 0:
         exit("import has no columns")
 
     return df
