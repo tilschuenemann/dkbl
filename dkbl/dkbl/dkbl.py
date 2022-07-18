@@ -10,7 +10,13 @@ import pathlib
 
 
 def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFrame:
+    """ 
     
+    :param path:
+    :param filetype:
+    :param bank:
+    :returns: 
+    """
     try:
         if filetype=="header":
             if bank =="dkb":
@@ -79,15 +85,9 @@ def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFra
 def _format_base(export_path: pathlib.Path,bank: str) -> pd.DataFrame:
     """Imports CSV from path and adds ledger columns.
 
-    Parameters
-    ------
-    export_path: pathlib.Path
-        path to export
-
-    Returns
-    -------
-    pd.DataFrame
-        df with ledger columns
+    :param export_path: path to export
+    :param bank:
+    :returns: df with ledger columns
     """
     df = _handle_import(export_path, "content",bank)
 
@@ -118,14 +118,9 @@ def _write_ledger_to_disk(
     df: pd.DataFrame, output_folder: pathlib.Path, fname: str):
     """Helper function for standardized writing to disk.
 
-    Parameters
-    -------
-    df: pd.DataFrame
-        df to write
-    output_folder: pathlib.Path
-        path to output folder
-    fname: str
-        name of file to write (.csv will get appended)
+    :param df: df to write
+    :param output_folder: path to output folder
+    :param fname: name of file to write (.csv will get appended)
     """
 
     if pathlib.Path(output_folder).exists() is False:
@@ -156,14 +151,8 @@ def _write_ledger_to_disk(
 def _user_input(phrase: str) -> bool:
     """Helper function to get boolean user input.
 
-    Parameter
-    -------
-    phrase: str
-        question that asks for input
-    Returns
-    -------
-    bool
-        user choice
+    :param phrase: question that asks for input
+    :returns bool: user choice        
     """
     user_input = input(f"{phrase} [y/n] \n")
     if user_input == ("y"):
@@ -180,18 +169,9 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
 
     Ledger is written to disk in the output_folder and returned.
 
-    Parameters
-    -------
-    export: pathlib.Path
-        path to export
-    output_folder: pathlib.Path
-        path to output folder
-
-    Returns
-    -------
-    pd.DataFrame
-        ledger dataframe
-
+    :param export: path to export
+    :param output_folder: path to output folder
+    :returns: ledger dataframe
     """
     df = _format_base(export,bank)
     header = _handle_import(export, "header", bank)
@@ -209,17 +189,9 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
 def append_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -> pd.DataFrame:
     """
 
-    Parameters
-    -------
-    export: pathlib.Path
-        path to export
-    output_folder: pathlib.Path
-        path to output folder
-
-    Returns
-    -------
-    pd.DataFrame
-        new ledger with appendage
+    :param export: path to export
+    :param output_folder: path to output folder
+    :param returns: new ledger with appendage
     """
     ledger = _handle_import(output_folder, "ledger",bank)
     cutoff_date = ledger["date"].max()
@@ -240,15 +212,8 @@ def update_maptab(output_folder: pathlib.Path) -> pd.DataFrame:
     """Reads all unique recipients from ledger and adds new ones to the mapping
     table.
 
-    Parameters
-    -------
-    output_folder: pathlib.Path
-        path to output folder
-
-    Returns
-    -------
-    pd.DataFrame
-        updated mapping table
+    :param output_folder: path to output folder
+    :returns: updated mapping table
     """
 
     maptab_path = output_folder / "maptab.csv"
@@ -289,21 +254,11 @@ def update_history(
     If supplied initial_balance is nan, it's attempted to read the existing
     history and grab the initial balance from there.
 
-    Parameters
-    -------
-    output_folder : pathlib.Path
-        folder where ledger.csv resides in
-    initial_balance : float
-        initial account balance
-    use_custom_date: bool
-        should date_custom be considered?
-    use_custom_amount: bool
-        should amount_custom be considered?
-
-    Returns
-    -------
-    pd.DataFrame
-        history df with columns date, amount, balance, initial_balance
+    :param output_folder: folder where ledger.csv resides in
+    :param initial_balance: initial account balance
+    :param use_custom_date: should date_custom be considered?
+    :param use_custom_amount: should amount_custom be considered?
+    :returns: history df with columns date, amount, balance, initial_balance
     """
 
     if initial_balance == float():
@@ -345,15 +300,8 @@ def update_history(
 def update_ledger_mappings(output_folder: pathlib.Path) -> pd.DataFrame:
     """Joins maptab onto ledger and writes to disk.
 
-    Parameters
-    -------
-    output_folder: pathlib.Path
-        path to output folder
-
-    Returns
-    -------
-    pd.DataFrame
-        ledger with updated mappings
+    :param output_folder: path to output folder
+    :returns: ledger with updated mappings
     """
 
     ledger = _handle_import(output_folder, "ledger")
@@ -376,11 +324,8 @@ def _distribute_occurences(df: pd.DataFrame) -> pd.DataFrame:
     All their amounts get divided by the occurence and the dates get set to the
     start of that month.
 
-    Parameters
-    -------
-
-    Returns
-    -------
+    :param df:
+    :returns: 
 
     """
 
@@ -509,4 +454,4 @@ if __name__ == "__main__":
     elif args.action == "update-maptab":
         update_maptab(output_folder)
     elif args.action == "distribute-ledger":
-        distribute_occurences(output_folder)
+        _distribute_occurences(output_folder)
