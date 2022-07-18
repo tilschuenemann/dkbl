@@ -11,7 +11,7 @@ import pathlib
 
 def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFrame:
     """ 
-    
+
     :param path:
     :param filetype:
     :param bank:
@@ -118,6 +118,9 @@ def _write_ledger_to_disk(
     df: pd.DataFrame, output_folder: pathlib.Path, fname: str):
     """Helper function for standardized writing to disk.
 
+    If output_folder doesn't exit it falls back to the current working directory.
+    Incase the file to be written already exists, the user is asked for permission.
+
     :param df: df to write
     :param output_folder: path to output folder
     :param fname: name of file to write (.csv will get appended)
@@ -130,11 +133,10 @@ def _write_ledger_to_disk(
             + f"{output_folder}"
         )
 
-    fn = f"{fname}.csv"
-    name = output_folder / fn
+    name = output_folder / fname
 
     if name.exists():
-        if _user_input(f"Do you want to overwrite the existing {fname}.csv?") is False:
+        if _user_input(f"Do you want to overwrite the existing {fname}?") is False:
             exit(f"not overwriting {fname}. aborting.")
 
     df.to_csv(
@@ -176,7 +178,7 @@ def create_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
     df = _format_base(export,bank)
     header = _handle_import(export, "header", bank)
 
-    _write_ledger_to_disk(df, output_folder, "ledger")
+    _write_ledger_to_disk(df, output_folder, "ledger.csv")
 
     update_maptab(output_folder)
 
@@ -203,7 +205,7 @@ def append_ledger(export: pathlib.Path, output_folder: pathlib.Path,bank: str) -
     appended_ledger = pd.concat([ledger, df], axis=0, ignore_index=True)
 
     appended_ledger["date"] = pd.to_datetime(appended_ledger["date"], format="%Y-%m-%d")
-    _write_ledger_to_disk(appended_ledger, output_folder, "ledger")
+    _write_ledger_to_disk(appended_ledger, output_folder, "ledger.csv")
 
     return appended_ledger
 
@@ -292,7 +294,7 @@ def update_history(
     history["balance"] = history[amount_col] + history["initial_balance"]
     history["balance"] = history["balance"].cumsum()
 
-    _write_ledger_to_disk(history, output_folder, "history")
+    _write_ledger_to_disk(history, output_folder, "history.csv")
 
     return history
 
@@ -313,7 +315,7 @@ def update_ledger_mappings(output_folder: pathlib.Path) -> pd.DataFrame:
         )
     ].merge(mp, how="left", on="recipient")
 
-    _write_ledger_to_disk(ledger, output_folder, "ledger")
+    _write_ledger_to_disk(ledger, output_folder, "ledger.csv")
 
     return ledger
 
