@@ -25,21 +25,24 @@ def _handle_import(path: pathlib.Path, filetype: str, bank = None) -> pd.DataFra
 
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
 
-                # TODO to df
-                df = {
-                    "start": datetime.strptime(df.iloc[1, 1], "%d.%m.%Y"),
-                    "end": datetime.strptime(df.iloc[2, 1], "%d.%m.%Y"),
-                    "amount_end": locale.atof(df.iloc[3, 1].replace(" EUR", "")),
-                }
+                df = pd.DataFrame.from_dict(
+                    {
+                        "start": [datetime.strptime(df.iloc[1, 1], "%d.%m.%Y")],
+                        "end": [datetime.strptime(df.iloc[2, 1], "%d.%m.%Y")],
+                        "amount_end": [locale.atof(df.iloc[3, 1].replace(" EUR", ""))],
+                    }
+                )
             elif bank == "bbb":
                 df = pd.read_csv(path, encoding="iso-8859-1", sep=";").tail(2)
                 locale.setlocale(locale.LC_ALL, "de_DE.UTF-8")
-                # TODO to df
-                df = {
-                    "start": datetime.strptime(df.iloc[1, 0], "%d.%m.%Y"),
-                    "end": datetime.strptime(df.iloc[0, 0], "%d.%m.%Y"),
-                    "amount_end": locale.atof(df.iloc[1, 12]),
-                }
+
+                df = pd.DataFrame.from_dict(
+                    {
+                        "start": datetime.strptime(df.iloc[1, 0], "%d.%m.%Y"),
+                        "end": datetime.strptime(df.iloc[0, 0], "%d.%m.%Y"),
+                        "amount_end": locale.atof(df.iloc[1, 12]),
+                    }
+                )
         elif filetype == "content":
             if bank == "dkb":
                 df = pd.read_csv(path, encoding="iso-8859-1", skiprows=5, sep=";")
