@@ -388,7 +388,7 @@ def _distribute_occurences(df: pd.DataFrame) -> pd.DataFrame:
     return dis
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(prog="dkbl")
     subparsers = parser.add_subparsers(dest="action")
 
@@ -471,3 +471,6 @@ if __name__ == "__main__":
         update_maptab(output_folder)
     elif args.action == "distribute-ledger":
         _distribute_occurences(output_folder)
+
+if __name__ == "__main__":
+    main()
