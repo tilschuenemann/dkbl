@@ -1,5 +1,6 @@
-.mypy_cache/*
-dev/*
+.mypy_cache
+dev
 TODO.md
-dkbl/__pycache__/*
+.pytest_cache
+__pycache__
 viz/*
