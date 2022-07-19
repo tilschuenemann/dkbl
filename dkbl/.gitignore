@@ -3,4 +3,3 @@ dev
 TODO.md
 .pytest_cache
 __pycache__
-viz/*
