@@ -7,13 +7,12 @@ authors = ["schuenemann <til.schuenemann@mailbox.org>"]
 [tool.poetry.dependencies]
 python = "^3.10"
 pandas = "^1.4.2"
-pyproject-flake8 = "^0.0.1-alpha.4"
-tox = "^3.25.0"
-mypy = "^0.950"
 numpy = "^1.22.4"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+mypy = "^0.961"
+pyproject-flake8 = "^0.0.1-alpha.4"
+pytest = "^7.1.2"
 
 [tool.poetry.scripts]
 dkbl = "dkbl.dkbl:main"
