@@ -238,23 +238,22 @@ def update_maptab(output_folder: pathlib.Path) -> pd.DataFrame:
     maptab_path = output_folder / "maptab.csv"
     ledger = _handle_import(output_folder, "ledger")
 
-    fresh_recipients = pd.DataFrame(ledger.recipient.unique(), columns=["recipient"])
+    updated_maptab = pd.DataFrame(ledger.recipient.unique(), columns=["recipient"])
 
     if os.path.exists(maptab_path):
         stale_maptab = _handle_import(output_folder, "maptab")
 
         # TODO this will lose old entries incase of new ledger and old maptab
-        updated_maptab = fresh_recipients.merge(
+        updated_maptab = updated_maptab.merge(
             stale_maptab, on="recipient", how="left", suffixes=["_new", None]
         )
 
     else:
-        fresh_recipients["recipient_clean"] = str()
-        fresh_recipients["label1"] = str()
-        fresh_recipients["label2"] = str()
-        fresh_recipients["label3"] = str()
-        fresh_recipients["occurence"] = int()
-        updated_maptab = fresh_recipients
+        updated_maptab["recipient_clean"] = str()
+        updated_maptab["label1"] = str()
+        updated_maptab["label2"] = str()
+        updated_maptab["label3"] = str()
+        updated_maptab["occurence"] = int()
 
     updated_maptab = updated_maptab.sort_values(by="recipient")
     updated_maptab["recipient"] = updated_maptab["recipient"].replace("nan", "")
